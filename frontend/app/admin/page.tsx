@@ -89,6 +89,15 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
+    if (activeTab !== "feedback") return;
+    loadFeedbackQueue(true);
+    const timer = window.setInterval(() => {
+      loadFeedbackQueue(true);
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [activeTab]);
+
+  useEffect(() => {
     if (!selectedUser) return;
     setEditForm({ full_name: selectedUser.full_name, email: selectedUser.email });
     setNewPassword("");
@@ -113,6 +122,18 @@ export default function AdminPage() {
 
     if (failures.length) {
       setMessage(`Some admin data could not be loaded: ${Array.from(new Set(failures)).join("; ")}`);
+    }
+  }
+
+  async function loadFeedbackQueue(silent = false) {
+    if (!silent) setMessage("");
+    try {
+      setFeedback(await client.adminFeedback());
+      if (!silent) showToast({ title: "Feedback queue refreshed", tone: "success" });
+    } catch (error: unknown) {
+      const text = apiErrorMessage(error, "Could not load the feedback queue.");
+      if (!silent) setMessage(text);
+      if (!silent) showToast({ title: "Feedback refresh failed", description: text, tone: "error" });
     }
   }
 
@@ -297,6 +318,9 @@ export default function AdminPage() {
   const reputationApis = health?.optional_reputation_apis || {};
   const approvedSamples = feedback.filter((item) => item.status === "approved").length;
   const pendingSamples = feedback.filter((item) => item.status === "pending").length;
+  const pendingFeedback = feedback.filter((item) => item.status === "pending");
+  const reviewedFeedback = feedback.filter((item) => item.status !== "pending");
+  const orderedFeedback = [...pendingFeedback, ...reviewedFeedback];
   const trainingReady = approvedSamples >= MIN_TRAINING_SAMPLES;
 
   return (
@@ -322,6 +346,9 @@ export default function AdminPage() {
             }
           >
             {tab.label}
+            {tab.id === "feedback" && pendingSamples > 0 && (
+              <span className="ml-2 rounded-full bg-rose-400 px-2 py-0.5 text-xs font-bold text-slate-950">{pendingSamples}</span>
+            )}
           </button>
         ))}
       </div>
@@ -409,7 +436,12 @@ export default function AdminPage() {
           {approvedSamples === 0 && (
             <EmptyState title="No approved samples yet" description="Approve reviewed feedback before starting a meaningful training run." />
           )}
-          <Button className="mt-4" variant="secondary" disabled={!trainingReady || busy} onClick={train}>Train New Candidate</Button>
+          {pendingSamples > 0 && (
+            <Button className="mt-4" variant="secondary" onClick={() => setActiveTab("feedback")}>
+              Review {pendingSamples} Pending Feedback
+            </Button>
+          )}
+          <Button className="mt-3" variant="secondary" disabled={!trainingReady || busy} onClick={train}>Train New Candidate</Button>
           {!trainingReady && <p className="mt-2 text-xs text-slate-500">Training is disabled until {MIN_TRAINING_SAMPLES} approved feedback samples are available.</p>}
         </Card>
       </div>
@@ -418,10 +450,18 @@ export default function AdminPage() {
       {activeTab === "feedback" && (
       <div className="mt-5 grid gap-5">
         <Card>
-          <h2 className="text-xl font-bold text-white">Feedback Review Queue</h2>
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-xl font-bold text-white">Feedback Review Queue</h2>
+              <p className="mt-1 text-sm text-slate-400">{pendingSamples} pending review · {feedback.length} total feedback item{feedback.length === 1 ? "" : "s"}</p>
+            </div>
+            <Button variant="secondary" onClick={() => loadFeedbackQueue(false)} disabled={busy}>
+              <RefreshCcw className="h-4 w-4" /> Refresh Queue
+            </Button>
+          </div>
           <div className="mt-4 grid gap-3">
             {feedback.length === 0 && <EmptyState title="Queue is clear" description="False positive and false negative reports will appear here for review." />}
-            {feedback.map((item) => (
+            {orderedFeedback.map((item) => (
               <div key={item.id} className="rounded-md border border-line bg-slate-950/60 p-4">
                 <div className="flex flex-wrap gap-2">
                   <Badge>{securityLabel(item.feedback_type)}</Badge>
