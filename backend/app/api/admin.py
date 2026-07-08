@@ -173,8 +173,9 @@ def delete_user(
 
 
 @router.get("/feedback", response_model=list[AdminFeedbackRead])
-def feedback_queue(_: User = Depends(require_admin), db: Session = Depends(get_db)) -> list[Feedback]:
-    return db.query(Feedback).order_by(Feedback.created_at.desc()).all()
+def feedback_queue(_: User = Depends(require_admin), db: Session = Depends(get_db)) -> list[dict]:
+    items = db.query(Feedback).order_by(Feedback.created_at.desc()).all()
+    return _feedback_list(db, items)
 
 
 @router.post("/feedback/{feedback_id}/approve", response_model=AdminFeedbackRead)
@@ -183,9 +184,9 @@ def approve(
     request: FeedbackReviewRequest,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
-) -> Feedback:
+) -> dict:
     try:
-        return approve_feedback(db, admin, feedback_id, request.dataset_version)
+        return _feedback_item(db, approve_feedback(db, admin, feedback_id, request.dataset_version))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -196,13 +197,38 @@ def reject(
     request: FeedbackReviewRequest = Body(default=FeedbackReviewRequest()),
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
-) -> Feedback:
+) -> dict:
     if not request.notes or not request.notes.strip():
         raise HTTPException(status_code=400, detail="Rejection reason is required")
     try:
-        return reject_feedback(db, admin, feedback_id, request.notes.strip())
+        return _feedback_item(db, reject_feedback(db, admin, feedback_id, request.notes.strip()))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+def _feedback_list(db: Session, items: list[Feedback]) -> list[dict]:
+    user_ids = {item.user_id for item in items if item.user_id}
+    users = db.query(User).filter(User.id.in_(user_ids)).all() if user_ids else []
+    users_by_id = {user.id: user for user in users}
+    return [_feedback_item(db, item, users_by_id.get(item.user_id)) for item in items]
+
+
+def _feedback_item(db: Session, item: Feedback, submitter: User | None = None) -> dict:
+    user = submitter or db.get(User, item.user_id)
+    return {
+        "id": item.id,
+        "analysis_id": item.analysis_id,
+        "user_id": item.user_id,
+        "submitter_name": user.full_name if user else None,
+        "submitter_email": user.email if user else None,
+        "feedback_type": item.feedback_type,
+        "suggested_label": item.suggested_label,
+        "notes": item.notes,
+        "status": item.status,
+        "reviewed_by": item.reviewed_by,
+        "reviewed_at": item.reviewed_at,
+        "created_at": item.created_at,
+    }
 
 
 @router.get("/models", response_model=list[ModelVersionRead])

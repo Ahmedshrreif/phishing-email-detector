@@ -470,6 +470,7 @@ export default function AdminPage() {
                 </div>
                 <p className="mt-2 text-sm text-slate-400">{item.notes || "No notes"}</p>
                 <div className="mt-3 grid gap-1 text-xs text-slate-500 sm:grid-cols-2">
+                  <span className="break-all">Submitted by {item.submitter_name || "Unknown user"}{item.submitter_email ? ` · ${item.submitter_email}` : ""}</span>
                   <span>Submitted {formatReadableDateTime(item.created_at)}</span>
                   {item.reviewed_at && <span>Reviewed {formatReadableDateTime(item.reviewed_at)}</span>}
                   {item.reviewed_by && <span className="break-all">Reviewer {shortId(item.reviewed_by)}</span>}

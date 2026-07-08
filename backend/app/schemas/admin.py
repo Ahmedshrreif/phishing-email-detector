@@ -23,6 +23,8 @@ class AdminFeedbackRead(BaseModel):
     id: str
     analysis_id: str
     user_id: str
+    submitter_name: str | None = None
+    submitter_email: str | None = None
     feedback_type: str
     suggested_label: str | None
     notes: str | None

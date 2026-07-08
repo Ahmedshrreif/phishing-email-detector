@@ -26,7 +26,9 @@ def test_feedback_requires_admin_approval(client):
     admin_headers = admin_header(client)
     queue = client.get("/api/admin/feedback", headers=admin_headers)
     assert queue.status_code == 200, queue.text
-    assert any(item["id"] == feedback_id and item["status"] == "pending" for item in queue.json())
+    queued_feedback = next(item for item in queue.json() if item["id"] == feedback_id)
+    assert queued_feedback["status"] == "pending"
+    assert queued_feedback["submitter_email"] == TEST_USER_EMAIL
 
     approved = client.post(f"/api/admin/feedback/{feedback_id}/approve", headers=admin_headers, json={"dataset_version": "verified-feedback"})
     assert approved.status_code == 200, approved.text

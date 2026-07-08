@@ -110,6 +110,9 @@ export type DashboardSummary = {
 export type Feedback = {
   id: string;
   analysis_id: string;
+  user_id?: string | null;
+  submitter_name?: string | null;
+  submitter_email?: string | null;
   feedback_type: string;
   suggested_label?: string | null;
   notes?: string | null;
