@@ -107,11 +107,14 @@ def make_pdf_report(analysis: Analysis) -> bytes:
 def make_history_csv(analyses: list[Analysis]) -> str:
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Date", "Subject", "Sender", "Classification", "Risk score", "Confidence", "Source", "Model version"])
+    writer.writerow(["Date", "Analyst", "Analyst email", "Subject", "Sender", "Classification", "Risk score", "Confidence", "Source", "Model version"])
     for item in analyses:
+        owner = item.user
         writer.writerow(
             [
                 item.created_at.isoformat(),
+                owner.full_name if owner else "",
+                owner.email if owner else "",
                 item.subject or "",
                 item.sender or "",
                 item.classification,

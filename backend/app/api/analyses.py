@@ -5,7 +5,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import and_, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database.session import get_db
 from app.models.domain import Analysis, AuditLog, User
@@ -29,8 +29,8 @@ def list_analyses(
     page_size: int = Query(20, ge=1, le=100),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> list[Analysis]:
-    query = db.query(Analysis)
+) -> list[dict]:
+    query = db.query(Analysis).options(joinedload(Analysis.user))
     if user.role != "admin":
         query = query.filter(Analysis.user_id == user.id)
     filters = []
@@ -55,16 +55,37 @@ def list_analyses(
         "risk_desc": Analysis.risk_score.desc(),
         "risk_asc": Analysis.risk_score.asc(),
     }[sort]
-    return query.order_by(ordering).offset((page - 1) * page_size).limit(page_size).all()
+    analyses = query.order_by(ordering).offset((page - 1) * page_size).limit(page_size).all()
+    return [_analysis_list_item(item) for item in analyses]
 
 
 @router.get("/export.csv")
 def export_history(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
-    query = db.query(Analysis)
+    query = db.query(Analysis).options(joinedload(Analysis.user))
     if user.role != "admin":
         query = query.filter(Analysis.user_id == user.id)
     csv_text = make_history_csv(query.order_by(Analysis.created_at.desc()).all())
     return Response(csv_text, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=phishguard-history.csv"})
+
+
+def _analysis_list_item(analysis: Analysis) -> dict:
+    owner = analysis.user
+    return {
+        "id": analysis.id,
+        "user_id": analysis.user_id,
+        "analyst_name": owner.full_name if owner else None,
+        "analyst_email": owner.email if owner else None,
+        "subject": analysis.subject,
+        "sender": analysis.sender,
+        "reply_to": analysis.reply_to,
+        "classification": analysis.classification,
+        "risk_score": analysis.risk_score,
+        "confidence": analysis.confidence,
+        "model_version": analysis.model_version,
+        "analysis_source": analysis.analysis_source,
+        "summary": analysis.summary,
+        "created_at": analysis.created_at,
+    }
 
 
 @router.get("/{analysis_id}", response_model=AnalysisResponse)

@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmModal } from "@/components/ui/modal";
 import { OverflowMenu, OverflowMenuItem } from "@/components/ui/overflow-menu";
-import { api, apiErrorMessage, client, currentUser } from "@/services/api";
+import { api, apiErrorMessage, client } from "@/services/api";
 import type { AnalysisListItem } from "@/types/api";
 import { showToast } from "@/lib/toast";
 import { cn, downloadBlob, formatReadableDateTime, riskColor, securityLabel, textDirectionClass } from "@/lib/utils";
@@ -49,7 +49,6 @@ export default function HistoryPage() {
   const [actionId, setActionId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const analyst = currentUser()?.full_name || "Current user";
 
   const hasFilters = useMemo(
     () => Boolean(filters.search || filters.classification || filters.source || filters.date_from || filters.date_to),
@@ -253,7 +252,10 @@ export default function HistoryPage() {
                   <td className="px-3 py-4"><Badge>{securityLabel(item.analysis_source)}</Badge></td>
                   <td className="px-3 py-4"><Badge className={riskBadgeClass(item.risk_score)}>{securityLabel(item.classification)}</Badge></td>
                   <td className={`px-3 py-4 text-lg font-black ${riskColor(item.risk_score)}`}>{Math.round(item.risk_score)}</td>
-                  <td className="px-3 py-4 text-slate-300">{analyst}</td>
+                  <td className="px-3 py-4 text-slate-300">
+                    <p className="font-semibold text-slate-200">{item.analyst_name || "Unknown user"}</p>
+                    {item.analyst_email && <p className="mt-1 break-all text-xs text-slate-500">{item.analyst_email}</p>}
+                  </td>
                   <td className="px-3 py-4">
                     <div className="flex flex-wrap gap-2">
                       <Link href={`/analyses/${item.id}`}><Button className="min-h-9 px-3" variant="secondary"><Eye className="h-4 w-4" /> View Details</Button></Link>

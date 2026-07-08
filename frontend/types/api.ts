@@ -77,6 +77,9 @@ export type Analysis = {
 
 export type AnalysisListItem = {
   id: string;
+  user_id: string;
+  analyst_name?: string | null;
+  analyst_email?: string | null;
   subject?: string | null;
   sender?: string | null;
   reply_to?: string | null;

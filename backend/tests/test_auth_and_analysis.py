@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import zipfile
 
-from tests.conftest import auth_header
+from tests.conftest import TEST_USER_EMAIL, admin_header, auth_header
 
 
 def test_register_login_and_me(client):
@@ -45,6 +45,23 @@ def test_paste_email_analysis_detects_phishing_and_persists(client):
     assert payload["indicators"]
     saved = client.get(f"/api/analyses/{payload['analysis_id']}", headers=headers)
     assert saved.status_code == 200
+
+
+def test_admin_history_shows_original_analysis_owner(client):
+    user_headers = auth_header(client)
+    response = client.post(
+        "/api/analyze/url",
+        headers=user_headers,
+        json={"urls": ["https://example.com/review"]},
+    )
+    assert response.status_code == 200, response.text
+    analysis_id = response.json()["analysis_id"]
+
+    admin_rows = client.get("/api/analyses", headers=admin_header(client))
+    assert admin_rows.status_code == 200, admin_rows.text
+    row = next(item for item in admin_rows.json() if item["id"] == analysis_id)
+    assert row["analyst_email"] == TEST_USER_EMAIL
+    assert row["analyst_name"] == "Test User"
 
 
 def test_eml_upload_and_report_generation(client):

@@ -149,6 +149,9 @@ class AnalysisResponse(BaseModel):
 
 class AnalysisListItem(BaseModel):
     id: str
+    user_id: str
+    analyst_name: str | None = None
+    analyst_email: str | None = None
     subject: str | None
     sender: str | None
     reply_to: str | None
