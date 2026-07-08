@@ -33,6 +33,19 @@ def test_feedback_requires_admin_approval(client):
     assert approved.json()["status"] == "approved"
 
 
+def test_correct_feedback_uses_current_analysis_label(client):
+    user_headers = auth_header(client)
+    analysis_id = _analysis_id(client, user_headers)
+    feedback = client.post(
+        f"/api/analyses/{analysis_id}/feedback",
+        headers=user_headers,
+        json={"feedback_type": "correct", "notes": "The result looks accurate"},
+    )
+    assert feedback.status_code == 200, feedback.text
+    body = feedback.json()
+    assert body["suggested_label"] in {"safe", "low_risk", "suspicious", "phishing", "critical_threat"}
+
+
 def test_admin_access_control(client):
     user_headers = auth_header(client)
     denied = client.get("/api/admin/users", headers=user_headers)

@@ -13,11 +13,14 @@ def submit_feedback(db: Session, user: User, analysis_id: str, request: Feedback
     analysis = db.query(Analysis).filter(Analysis.id == analysis_id, Analysis.user_id == user.id).first()
     if not analysis:
         raise ValueError("Analysis not found")
+    suggested_label = request.suggested_label
+    if request.feedback_type == "correct" and not suggested_label:
+        suggested_label = analysis.classification
     feedback = Feedback(
         analysis_id=analysis.id,
         user_id=user.id,
         feedback_type=request.feedback_type,
-        suggested_label=request.suggested_label,
+        suggested_label=suggested_label,
         notes=request.notes,
         status="pending",
     )
