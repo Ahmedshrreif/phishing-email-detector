@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.db
+*.log
+backend/ml/artifacts/*
+!backend/ml/artifacts/active_model.json
+!backend/ml/artifacts/starter-nlp-v1/
+!backend/ml/artifacts/starter-nlp-v1/**
+
+# Node / Next
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+*.inspect.ndjson
+~$*
+
+# Environment
+.env
+
+# Local OS/editor
+.DS_Store
+Thumbs.db

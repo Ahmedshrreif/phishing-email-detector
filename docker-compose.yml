@@ -1,0 +1,57 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: phishguard
+      POSTGRES_PASSWORD: phishguard
+      POSTGRES_DB: phishguard
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U phishguard -d phishguard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      APP_ENV: development
+      JWT_SECRET_KEY: change-me-for-local-compose
+      DATABASE_URL: postgresql://phishguard:phishguard@db:5432/phishguard
+      FRONTEND_URL: http://localhost:3000
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      MODEL_STORAGE_PATH: /app/ml/artifacts
+      ACTIVE_MODEL_VERSION: starter-nlp-v1
+      AUTO_CREATE_TABLES: "false"
+      AUTO_SEED_ADMIN: "true"
+      ADMIN_EMAIL: admin@phishguard.com
+      ADMIN_PASSWORD: AdminAccess!234
+      ADMIN_FULL_NAME: PhishGuard Owner
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
